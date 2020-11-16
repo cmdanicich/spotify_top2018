@@ -1,0 +1,102 @@
+---
+title: "Acquire and Analyze - Applied Data Analytics"
+author: "Claire Danicich"
+date: "11/15/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(mosaic)
+library(ggpubr)
+library(car)
+library(psych)
+
+```
+
+This dataset includes the top 100 songs from 2018 including the artist who sang each song, the danceability, energy, key, loudness, mode, speechiness, acousticness, istrumentalness, liveliness, valence, tempo, duration in minutes, and the time signature. The following code imports the .csv file and then knits a table. This table includes different musical variables for each song. In this analysis, I am going to use these as the explanatory variables. 
+
+```{r dataset, message=F}
+data_file <- "top2018.csv"
+top <- read_csv(data_file)
+
+knitr::kable(summary(top[4:14]))
+```
+
+Once the 100 artists were plotted, I immediately noticed duplicate names. To get a succinct list without duplicate artists, I used the dplyr library pipe funtion to sort out distinct artist names. This returns 70 unique values.
+
+```{r top artists, echo=FALSE, message=FALSE, warning=FALSE}
+# top 100 artists
+tibble(top$artists)
+
+# rnew var without duplicates
+top_artists <- top %>%
+                  distinct(artists)
+
+# total top artists after removing duplicates
+count(top_artists)
+
+```
+
+Below, I used the pairs.panels function to visualize correlations between the explanatory variables. The larger the numbers the stronger the relationship and visa versa. The only pair with a strong relationship is energy and loudness with .73.
+
+```{r pairs.panels, eval=TRUE, echo=FALSE}
+head(top, 5)
+
+pairs.panels(top[,4:14], ellipses = F, scale=T, smooth=F, hist.col="#85D4E3")
+
+```
+
+Below are table summaries of Loudness and Energy as per the panels they have the highest relationship. The next step in determining whether or not they are actually correlated by running a Pearson Correlation Test. For this test, our null hypothesis is that there is no linear correlation between Loudness and Energy and our alternative hypothesis is that there is a linear correlation between Loudness and Energy of the song. The correlation test will tell us if Loudness and Energy are associated and help explain the relationship between the two continuous variables. Below are summary tables of each varibale's descriptive statistics. 
+
+```{r favstats tables, eval=TRUE, echo=FALSE}
+knitr::kable(favstats(top$loudness), caption = "Loudness")
+knitr::kable(favstats(top$energy), caption = "Energy")
+```
+
+With 95% confidence and a p-value of less than .001, we can reject the null hypothesis and accept the alternative hypothesis that there is a linear realtionship between loudness and energy (t = 10.659, df = 98, p-value < 2.2e-16). With a correlation value of .733, there is a strong correlation between loudness and energy. 
+
+```{r correlation test, message=FALSE}
+res1 <- cor.test(top$loudness, top$energy, 
+                    method = "pearson")
+res1
+```
+
+The following plots the linearity of Energy and Loudness. Here you can see the linear relationship between the two variables. The regression line is included in black and the smoothed, fitted regression line is in blue. The upper left hand corner also includes the correlation coefficient.  
+
+```{r plot backup, echo=FALSE, eval=FALSE}
+# b <- ggplot(top, aes(x = energy, y = loudness))
+# # Scatter plot with regression line
+# b + geom_point()+
+#   geom_smooth(method = "lm") 
+#      
+# # Add a loess smoothed fit curve
+# b + geom_point()+
+#   geom_smooth(method = "loess")
+```
+
+```{r plot, eval=TRUE, echo=FALSE}
+# Add regression line and confidence interval
+# Add correlation coefficient: stat_cor()
+ggscatter(top, x = "energy", y = "loudness",
+          add = "reg.line", conf.int = TRUE,    
+          add.params = list(fill = "lightgray"),
+          ggtheme = theme_minimal()
+          )+
+  stat_cor(method = "pearson", 
+           label.x = .25, label.y = 1) +
+  geom_point()+
+  geom_smooth(method = "loess")
+```
+
+Not knowing anything about musical variables, I believe it makes sense that these two variables are correlated. I found it interesting that there were little to no reltaionships elsewhere in the pairs.panels. My next question would be to determine what makes a song hit the top 100 charts - is it the danceibility, the liveness, the energy? Or is it that certain artists are just more likely to make the list because of their popularity? 
+
+
+
+
+
+
